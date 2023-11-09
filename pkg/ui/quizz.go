@@ -18,12 +18,15 @@ type UI struct {
 
 	lastCorrect *bool
 	timeout     int
+
+	quitting bool
+	timedOut bool
 }
 
-//
-//type AnswerMsg struct {
-//	correct
-//}
+type TerminatedMsg struct {
+	// timeout tells if the message originates from a timeout or a completion of the quizz
+	timeout bool
+}
 
 func NewUI(q quizz.Quizz, timeout int) UI {
 	ti := textinput.New()
@@ -49,6 +52,11 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case TerminatedMsg:
+		ui.quitting = true
+		ui.timedOut = msg.timeout
+		return ui, tea.Quit
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
@@ -58,6 +66,10 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			*ui.lastCorrect = ui.quizz.Check(ui.resInput.Value())
 			ui.resInput.SetValue("")
+
+			if ui.quizz.Terminated() {
+				return ui, ui.terminate(false)
+			}
 
 			return ui, nil
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -70,6 +82,12 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (ui UI) View() string {
+	if ui.quitting {
+		if ui.timedOut {
+			return fmt.Sprintf("Quizz done ! Score: %d", ui.quizz.Score())
+		}
+		return fmt.Sprintf("Quizz timed out ! Try again ... Score: %d", ui.quizz.Score())
+	}
 	correct := ""
 	if ui.lastCorrect != nil && *ui.lastCorrect {
 		correct = "Correct answer !\n"
@@ -86,6 +104,12 @@ func (ui UI) View() string {
 Score: %d
 (ctrl+c to quit)
 `, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score())
+}
+
+func (ui UI) terminate(isTimeout bool) tea.Cmd {
+	return func() tea.Msg {
+		return TerminatedMsg{timeout: isTimeout}
+	}
 }
 
 //
