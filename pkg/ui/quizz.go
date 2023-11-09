@@ -5,9 +5,11 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"gp-guizz-tui/pkg/quizz"
+	"time"
 )
 
 var (
@@ -22,6 +24,7 @@ type keyMap struct {
 type UI struct {
 	quizz    quizz.Quizz
 	resInput textinput.Model
+	timer    timer.Model
 
 	keymap keyMap
 	help   help.Model
@@ -51,6 +54,7 @@ func NewUI(q quizz.Quizz, timeout int) UI {
 		quizz:    q,
 		timeout:  timeout,
 		resInput: ti,
+		timer:    timer.New(time.Duration(timeout) * time.Second),
 		keymap: keyMap{
 			Answer: key.NewBinding(
 				key.WithKeys("enter"),
@@ -66,13 +70,20 @@ func NewUI(q quizz.Quizz, timeout int) UI {
 }
 
 func (ui UI) Init() tea.Cmd {
-	return tea.Sequence(tea.EnterAltScreen, ui.resInput.Focus())
+	return tea.Sequence(tea.EnterAltScreen, ui.resInput.Focus(), ui.timer.Init())
 }
 
 func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case timer.TickMsg:
+		ui.timer, cmd = ui.timer.Update(msg)
+		return ui, cmd
+
+	case timer.TimeoutMsg:
+		return ui, ui.terminate(true)
+
 	case TerminatedMsg:
 		ui.quitting = true
 		ui.timedOut = msg.timeout
@@ -123,10 +134,10 @@ func (ui UI) View() string {
 %s
 
 %s
-Score: %d
+Score: %d, remaining time: %d s
 
 %s
-`, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score(), ui.help.FullHelpView(ui.keymap.longHelp()))
+`, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score(), ui.timer.Timeout/time.Second, ui.help.FullHelpView(ui.keymap.longHelp()))
 }
 
 func (ui UI) terminate(isTimeout bool) tea.Cmd {
