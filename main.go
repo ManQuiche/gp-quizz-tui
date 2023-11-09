@@ -22,7 +22,7 @@ func main() {
 	qz := quizz.NewQuizz(questions)
 	qui := ui.NewUI(qz, *timeout)
 
-	p := tea.NewProgram(qui)
+	p := tea.NewProgram(qui, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}

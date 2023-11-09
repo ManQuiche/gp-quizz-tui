@@ -43,7 +43,7 @@ func (q *quizz) Check(answer string) bool {
 }
 
 func (q *quizz) nextQuestion() bool {
-	if q.current == len(q.questions) {
+	if q.current == len(q.questions)-1 {
 		q.Stop()
 		return true
 	}

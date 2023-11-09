@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,12 +14,20 @@ var (
 	resInputStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 )
 
+type keyMap struct {
+	Answer key.Binding
+	Exit   key.Binding
+}
+
 type UI struct {
 	quizz    quizz.Quizz
 	resInput textinput.Model
 
-	lastCorrect *bool
+	keymap keyMap
+	help   help.Model
+
 	timeout     int
+	lastCorrect *bool
 
 	quitting bool
 	timedOut bool
@@ -41,11 +51,22 @@ func NewUI(q quizz.Quizz, timeout int) UI {
 		quizz:    q,
 		timeout:  timeout,
 		resInput: ti,
+		keymap: keyMap{
+			Answer: key.NewBinding(
+				key.WithKeys("enter"),
+				key.WithHelp("enter", "Submit your answer"),
+			),
+			Exit: key.NewBinding(
+				key.WithKeys("ctrl+c"),
+				key.WithHelp("ctrl+c", "Exit the quizz"),
+			),
+		},
+		help: help.New(),
 	}
 }
 
 func (ui UI) Init() tea.Cmd {
-	return ui.resInput.Focus()
+	return tea.Sequence(tea.EnterAltScreen, ui.resInput.Focus())
 }
 
 func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -55,7 +76,7 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TerminatedMsg:
 		ui.quitting = true
 		ui.timedOut = msg.timeout
-		return ui, tea.Quit
+		return ui, nil
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -81,12 +102,13 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return ui, cmd
 }
 
+// TODO: create dedicated views func
 func (ui UI) View() string {
 	if ui.quitting {
 		if ui.timedOut {
-			return fmt.Sprintf("Quizz done ! Score: %d", ui.quizz.Score())
+			return fmt.Sprintf("\n\nQuizz timed out ! Try again ... Score: %d", ui.quizz.Score())
 		}
-		return fmt.Sprintf("Quizz timed out ! Try again ... Score: %d", ui.quizz.Score())
+		return fmt.Sprintf("\n\nQuizz done ! Score: %d", ui.quizz.Score())
 	}
 	correct := ""
 	if ui.lastCorrect != nil && *ui.lastCorrect {
@@ -102,8 +124,9 @@ func (ui UI) View() string {
 
 %s
 Score: %d
-(ctrl+c to quit)
-`, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score())
+
+%s
+`, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score(), ui.help.FullHelpView(ui.keymap.longHelp()))
 }
 
 func (ui UI) terminate(isTimeout bool) tea.Cmd {
@@ -112,50 +135,13 @@ func (ui UI) terminate(isTimeout bool) tea.Cmd {
 	}
 }
 
-//
-//func (ui UI) Run() {
-//	select {
-//	case <-ui.askMany():
-//		fmt.Printf("\n\nQuizz done ! Score: %d", ui.quizz.Score())
-//	case <-time.After(time.Duration(ui.timeout) * time.Second):
-//		fmt.Printf("\n\nQuizz timed out ! Try again ... Score: %d", ui.quizz.Score())
-//	}
-//
-//	return
-//}
-//
-//func (ui UI) askMany() <-chan bool {
-//	done := make(chan bool)
-//
-//	go func() {
-//		for !ui.quizz.Terminated() {
-//			ui.ask()
-//		}
-//
-//		done <- true
-//	}()
-//
-//	return done
-//}
-//
-//func (ui UI) ask() {
-//	reader := bufio.NewReader(os.Stdin)
-//
-//	correct := false
-//
-//	for !correct {
-//		fmt.Printf("%s:\n", ui.quizz.Current())
-//
-//		read, err := reader.ReadString('\n')
-//		if err != nil {
-//			log.Panic(err)
-//		}
-//
-//		if ui.quizz.Check(read) {
-//			fmt.Printf("Correct answer !\n\n")
-//			correct = true
-//		} else {
-//			fmt.Printf("Wrong ! Try again...\n\n")
-//		}
-//	}
-//}
+func (k keyMap) shortHelp() []key.Binding {
+	return []key.Binding{k.Exit}
+}
+
+func (k keyMap) longHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Answer},
+		{k.Exit},
+	}
+}
