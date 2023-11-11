@@ -3,10 +3,15 @@ package quizz
 import "strings"
 
 func NewQuizz(questions []Question) Quizz {
+	if questions == nil {
+		questions = []Question{}
+	}
+
 	return &quizz{
 		questions:  questions,
 		score:      0,
 		terminated: false,
+		current:    0,
 	}
 }
 
@@ -23,6 +28,9 @@ func (q quizz) Questions() []Question {
 }
 
 func (q quizz) Current() string {
+	if q.current < 0 || q.current >= len(q.questions) {
+		return ""
+	}
 	return q.questions[q.current].Desc
 }
 
@@ -33,7 +41,7 @@ func (q quizz) Score() int {
 func (q *quizz) Check(answer string) bool {
 	cleanAnswer := strings.ToLower(strings.Trim(strings.TrimSpace(answer), "\n"))
 
-	if q.questions[q.current].Answer == cleanAnswer {
+	if strings.ToLower(q.questions[q.current].Answer) == cleanAnswer {
 		q.score += 1
 		q.nextQuestion()
 		return true

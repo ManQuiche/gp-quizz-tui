@@ -5,12 +5,26 @@ import (
 	"testing"
 )
 
+var (
+	threeQuestions = []Question{
+		{Desc: "2+1", Answer: "3"},
+		{Desc: "0+0", Answer: "0"},
+		{Desc: "30+75", Answer: "105"},
+	}
+	twoQuestions = []Question{
+		{Desc: "5+5", Answer: "10"},
+		{Desc: "What is the capital city of France ? ", Answer: "Paris"},
+	}
+	oneQuestion = []Question{
+		{Desc: "Hello ?", Answer: "World"},
+	}
+	emptyQuizz = &quizz{questions: nil}
+)
+
 func TestNewQuizz(t *testing.T) {
 	type args struct {
 		questions []Question
 	}
-
-	questions := []Question{{Desc: "5+5", Answer: "10"}, {Desc: "8+2", Answer: "10"}}
 
 	tests := []struct {
 		name string
@@ -20,16 +34,16 @@ func TestNewQuizz(t *testing.T) {
 		{
 			"two questions quizz",
 			args{
-				questions: questions,
+				questions: twoQuestions,
 			},
-			&quizz{questions: questions},
+			&quizz{questions: twoQuestions},
 		},
 		{
 			"empty quizz",
 			args{
 				questions: nil,
 			},
-			&quizz{questions: nil},
+			emptyQuizz,
 		},
 	}
 	for _, tt := range tests {
@@ -58,7 +72,39 @@ func Test_quizz_Check(t *testing.T) {
 		args   args
 		want   bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "wrong answer",
+			fields: fields{
+				questions:  oneQuestion,
+				timeout:    0,
+				terminated: false,
+				current:    0,
+			},
+			args: args{answer: oneQuestion[0].Answer + "hihi"},
+			want: false,
+		},
+		{
+			name: "right answer",
+			fields: fields{
+				questions:  threeQuestions,
+				timeout:    0,
+				terminated: false,
+				current:    1,
+			},
+			args: args{answer: twoQuestions[1].Answer},
+			want: true,
+		},
+		{
+			name: "right answer, last question",
+			fields: fields{
+				questions:  twoQuestions,
+				timeout:    0,
+				terminated: false,
+				current:    1,
+			},
+			args: args{answer: twoQuestions[1].Answer},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -89,7 +135,36 @@ func Test_quizz_Current(t *testing.T) {
 		fields fields
 		want   string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "two questions",
+			fields: fields{
+				questions:  twoQuestions,
+				timeout:    0,
+				terminated: false,
+				current:    1,
+			},
+			want: twoQuestions[1].Desc,
+		},
+		{
+			name: "nil questions",
+			fields: fields{
+				questions:  nil,
+				timeout:    0,
+				terminated: false,
+				current:    1,
+			},
+			want: "",
+		},
+		{
+			name: "empty questions",
+			fields: fields{
+				questions:  []Question{},
+				timeout:    0,
+				terminated: false,
+				current:    1,
+			},
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
