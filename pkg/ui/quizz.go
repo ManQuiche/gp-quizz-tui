@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -70,6 +69,7 @@ func NewUI(q quizz.Quizz, timeout int) UI {
 }
 
 func (ui UI) Init() tea.Cmd {
+	ui.help.ShowAll = true
 	return tea.Sequence(tea.EnterAltScreen, ui.resInput.Focus(), ui.timer.Init())
 }
 
@@ -87,6 +87,7 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TerminatedMsg:
 		ui.quitting = true
 		ui.timedOut = msg.timeout
+		ui.help.ShowAll = false
 		return ui, nil
 
 	case tea.KeyMsg:
@@ -113,31 +114,15 @@ func (ui UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return ui, cmd
 }
 
-// TODO: create dedicated views func
 func (ui UI) View() string {
 	if ui.quitting {
 		if ui.timedOut {
-			return fmt.Sprintf("\n\nQuizz timed out ! Try again ... Score: %d", ui.quizz.Score())
+			return ui.viewTimedOut()
 		}
-		return fmt.Sprintf("\n\nQuizz done ! Score: %d", ui.quizz.Score())
-	}
-	correct := ""
-	if ui.lastCorrect != nil && *ui.lastCorrect {
-		correct = "Correct answer !\n"
-	} else if ui.lastCorrect != nil {
-		correct = "Wrong ! Try again...\n"
+		return ui.viewDone()
 	}
 
-	return fmt.Sprintf(`
-%s
-
-%s
-
-%s
-Score: %d, remaining time: %d s
-
-%s
-`, ui.quizz.Current(), resInputStyle.Render(ui.resInput.View()), correct, ui.quizz.Score(), ui.timer.Timeout/time.Second, ui.help.FullHelpView(ui.keymap.longHelp()))
+	return ui.viewPlaying()
 }
 
 func (ui UI) terminate(isTimeout bool) tea.Cmd {
@@ -146,11 +131,11 @@ func (ui UI) terminate(isTimeout bool) tea.Cmd {
 	}
 }
 
-func (k keyMap) shortHelp() []key.Binding {
+func (k keyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Exit}
 }
 
-func (k keyMap) longHelp() [][]key.Binding {
+func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Answer},
 		{k.Exit},
