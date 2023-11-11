@@ -28,10 +28,10 @@ Score: %d, remaining time: %d s
 func (ui UI) viewDone() string {
 	return fmt.Sprintf(`
 
-Quizz done ! Score: %d
+Quizz done ! Score: %d, remaining time: %d s
 
 %s
-`, ui.quizz.Score(), ui.help.View(ui.keymap))
+`, ui.quizz.Score(), ui.timer.Timeout/time.Second, ui.help.View(ui.keymap))
 }
 
 func (ui UI) viewTimedOut() string {
