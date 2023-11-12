@@ -21,7 +21,7 @@ func ReadQuestions(filename string) ([]quizz.Question, error) {
 		return nil, fmt.Errorf("questions: %w", err)
 	}
 
-	r := csv.NewReader(strings.NewReader(string(content)))
+	r := csv.NewReader(strings.NewReader(content))
 	questions := make([]quizz.Question, 0)
 	for {
 		question, err := r.Read()
