@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// TODO: use github.com/stretchr/testify if it gets too verbose
+
 var (
 	threeQuestions = []Question{
 		{Desc: "2+1", Answer: "3"},
@@ -18,7 +20,7 @@ var (
 	oneQuestion = []Question{
 		{Desc: "Hello ?", Answer: "World"},
 	}
-	emptyQuizz = &quizz{questions: nil}
+	emptyQuizz = &quizz{questions: []Question{}}
 )
 
 func TestNewQuizz(t *testing.T) {
@@ -56,70 +58,50 @@ func TestNewQuizz(t *testing.T) {
 }
 
 func Test_quizz_Check(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	type args struct {
-		answer string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   bool
-	}{
-		{
-			name: "wrong answer",
-			fields: fields{
-				questions:  oneQuestion,
-				timeout:    0,
-				terminated: false,
-				current:    0,
-			},
-			args: args{answer: oneQuestion[0].Answer + "hihi"},
-			want: false,
-		},
-		{
-			name: "right answer",
-			fields: fields{
-				questions:  threeQuestions,
-				timeout:    0,
-				terminated: false,
-				current:    1,
-			},
-			args: args{answer: twoQuestions[1].Answer},
-			want: true,
-		},
-		{
-			name: "right answer, last question",
-			fields: fields{
-				questions:  twoQuestions,
-				timeout:    0,
-				terminated: false,
-				current:    1,
-			},
-			args: args{answer: twoQuestions[1].Answer},
-			want: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := &quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			if got := q.Check(tt.args.answer); got != tt.want {
-				t.Errorf("Check() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	oneQuestionQuizz := &quizz{questions: oneQuestion}
+	twoQuestionsQuizz := &quizz{questions: twoQuestions}
+
+	t.Run("wrong answer", func(t *testing.T) {
+		if oneQuestionQuizz.Check(oneQuestion[0].Answer+"mlkjsbhdf") == true {
+			t.Errorf("Check() = %t, want %t", true, false)
+		}
+	})
+
+	t.Run("last answer, good question", func(t *testing.T) {
+		if oneQuestionQuizz.Check(oneQuestion[0].Answer) == false {
+			t.Errorf("Check() = %t, want %t", false, true)
+		}
+
+		if oneQuestionQuizz.Terminated() == false {
+			t.Errorf("Terminated() = %t, want %t", false, true)
+
+		}
+	})
+
+	t.Run("two questions", func(t *testing.T) {
+		// First question
+		if twoQuestionsQuizz.Check(twoQuestions[0].Answer) == false {
+			t.Errorf("Check() = %t, want %t", true, false)
+		}
+
+		// Last question but wrong answer (current is 1, not 0 anymore), can't be terminated
+		if twoQuestionsQuizz.Check(twoQuestions[0].Answer) == true {
+			t.Errorf("Check() = %t, want %t", true, false)
+		}
+
+		if twoQuestionsQuizz.Terminated() == true {
+			t.Errorf("Terminated() = %t, want %t", false, true)
+		}
+
+		// Last question, needs to be terminated
+		if twoQuestionsQuizz.Check(twoQuestions[1].Answer) == false {
+			t.Errorf("Check() = %t, want %t", false, true)
+		}
+
+		if twoQuestionsQuizz.Terminated() == false {
+			t.Errorf("Terminated() = %t, want %t", true, false)
+		}
+	})
 }
 
 func Test_quizz_Current(t *testing.T) {
@@ -176,160 +158,39 @@ func Test_quizz_Current(t *testing.T) {
 				terminated: tt.fields.terminated,
 			}
 			if got := q.Current(); got != tt.want {
-				t.Errorf("Current() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_quizz_Questions(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   []Question
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			if got := q.Questions(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Questions() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_quizz_Score(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   int
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			if got := q.Score(); got != tt.want {
-				t.Errorf("Score() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_quizz_Stop(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := &quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			q.Stop()
-		})
-	}
-}
-
-func Test_quizz_Terminated(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			if got := q.Terminated(); got != tt.want {
-				t.Errorf("Terminated() = %v, want %v", got, tt.want)
+				t.Errorf("Current() = %s, want %s", got, tt.want)
 			}
 		})
 	}
 }
 
 func Test_quizz_nextQuestion(t *testing.T) {
-	type fields struct {
-		questions  []Question
-		current    int
-		score      int
-		timeout    int
-		terminated bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			q := &quizz{
-				questions:  tt.fields.questions,
-				current:    tt.fields.current,
-				score:      tt.fields.score,
-				timeout:    tt.fields.timeout,
-				terminated: tt.fields.terminated,
-			}
-			if got := q.nextQuestion(); got != tt.want {
-				t.Errorf("nextQuestion() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	oneQuestionQuizz := &quizz{questions: oneQuestion}
+	twoQuestionsQuizz := &quizz{questions: twoQuestions}
+
+	t.Run("last question", func(t *testing.T) {
+		if oneQuestionQuizz.nextQuestion() == false {
+			t.Errorf("nextQuestion() = %t, want %t", false, true)
+		}
+
+		if oneQuestionQuizz.Terminated() == false {
+			t.Errorf("Terminated() = %t, want %t", false, true)
+		}
+	})
+
+	t.Run("two questions", func(t *testing.T) {
+		// First question
+		if twoQuestionsQuizz.nextQuestion() == true {
+			t.Errorf("nextQuestion() = %t, want %t", true, false)
+		}
+
+		// Last question, needs to be terminated
+		if twoQuestionsQuizz.nextQuestion() == false {
+			t.Errorf("nextQuestion() = %t, want %t", false, true)
+		}
+
+		if twoQuestionsQuizz.Terminated() == false {
+			t.Errorf("Terminated() = %t, want %t", false, true)
+		}
+	})
 }
